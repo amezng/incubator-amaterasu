@@ -16,6 +16,9 @@
  */
 package org.apache.amaterasu.spark
 
+import java.io.File
+import java.nio.file.Paths
+
 import org.apache.amaterasu.common.runtime.Environment
 import org.apache.amaterasu.executor.execution.actions.runners.spark.SparkSql.SparkSqlRunner
 import org.apache.amaterasu.executor.runtime.AmaContext
@@ -24,6 +27,7 @@ import org.apache.log4j.Logger
 import org.apache.log4j.Level
 import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.scalatest.{BeforeAndAfterAll, DoNotDiscover, FlatSpec, Matchers}
+
 import scala.collection.JavaConverters._
 
 /**
@@ -38,6 +42,14 @@ class SparkSqlRunnerTests extends FlatSpec with Matchers with BeforeAndAfterAll 
   Logger.getLogger("jetty").setLevel(Level.OFF)
   Logger.getRootLogger.setLevel(Level.OFF)
 
+  private def getTempDir : String = {
+    val cwd = System.getProperty("user.dir")
+    val cwdResloved = if(cwd != null && !cwd.isEmpty) cwd else "/home/" + System.getProperty("user.name")
+    val dir = new File(cwdResloved)
+    dir.mkdir()
+    cwdResloved
+  }
+
 
   val notifier = new TestNotifier()
 
@@ -46,7 +58,7 @@ class SparkSqlRunnerTests extends FlatSpec with Matchers with BeforeAndAfterAll 
   override protected def beforeAll(): Unit = {
 
     val env = Environment()
-    env.workingDir = "file:/tmp/"
+    env.workingDir = getTempDir
     spark = SparkSession.builder()
       .appName("sql-job")
       .master("local[*]")
@@ -68,10 +80,10 @@ class SparkSqlRunnerTests extends FlatSpec with Matchers with BeforeAndAfterAll 
   Test whether parquet is used as default file format to load data from previous actions
    */
 
-  "SparkSql" should "load data as parquet if no input foramt is specified" in {
+  "SparkSql" should "load data as parquet if no input format is specified" in {
 
     val defaultParquetEnv = Environment()
-    defaultParquetEnv.workingDir = "file:/tmp/"
+    defaultParquetEnv.workingDir = getTempDir
     AmaContext.init(spark, "sparkSqlDefaultParquetJob", defaultParquetEnv)
 
     //Prepare test dataset
@@ -88,10 +100,10 @@ class SparkSqlRunnerTests extends FlatSpec with Matchers with BeforeAndAfterAll 
   Test whether the parquet data is successfully parsed, loaded and processed by SparkSQL
    */
 
-  "SparkSql" should "load PARQUET data directly from previous action's dataframe and persist the Data in working directory" in {
+  "SparkSql" should "load PARQUET data directly from previous action's dataframe and persist in the working directory" in {
 
     val tempParquetEnv = Environment()
-    tempParquetEnv.workingDir = "file:/tmp/"
+    tempParquetEnv.workingDir = getTempDir
     AmaContext.init(spark, "sparkSqlParquetJob", tempParquetEnv)
 
     //Prepare test dataset

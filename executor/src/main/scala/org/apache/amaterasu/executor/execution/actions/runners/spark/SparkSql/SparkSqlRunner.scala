@@ -22,10 +22,12 @@ import java.util
 import org.apache.amaterasu.common.execution.actions.Notifier
 import org.apache.amaterasu.common.logging.Logging
 import org.apache.amaterasu.common.runtime.Environment
+import org.apache.amaterasu.common.utils.StringUtils
 import org.apache.amaterasu.executor.runtime.AmaContext
 import org.apache.amaterasu.sdk.AmaterasuRunner
 import org.apache.commons.io.FilenameUtils
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+
 import scala.collection.JavaConverters._
 
 /**
@@ -57,38 +59,40 @@ class SparkSqlRunner extends Logging with AmaterasuRunner {
         //Parse the incoming query
         //notifier.info(s"================= parsing the SQL query =================")
 
-        val parser: List[String] = actionSource.toLowerCase.split(" ").toList
+        val parser: List[String] = actionSource.split(" ").toList
         var sqlPart1: String = ""
         var sqlPart2: String = ""
         var queryTempLen: Int = 0
 
         //get only the sql part of the query
-        for (i <- 0 to parser.indexOf("from")) {
+        val indexOfFrom = StringUtils.indexOfIgnoreCase(parser,"from")
+        for (i <- 0 to indexOfFrom) {
           sqlPart1 += parser(i) + " "
         }
 
-        if (parser.indexOf("readas") == -1) {
+        val indexOfReadAs = StringUtils.indexOfIgnoreCase(parser,"readas")
+        if (indexOfReadAs == -1) {
           queryTempLen = parser.length - 1
         }
         else
           queryTempLen = parser.length - 3
 
-        for (i <- parser.indexOf("from") + 1 to queryTempLen) {
-          if (!parser(i).contains("amacontext"))
+        for (i <- indexOfFrom + 1 to queryTempLen) {
+          if (!StringUtils.containsIgnoreCase(parser(i),"amacontext"))
             sqlPart2 += " " + parser(i)
         }
 
         //If no read format is speicified by the user, use PARQUET as default file format to load data
         var fileFormat: String = null
         //if there is no index for "readas" keyword, then set PARQUET as default read format
-        if (parser.indexOf("readas") == -1) {
+        if (indexOfReadAs == -1) {
           fileFormat = "parquet"
         }
         else
-          fileFormat = parser(parser.indexOf("readas") + 1)
+          fileFormat = parser(indexOfReadAs + 1)
 
 
-        val locationPath: String = parser.filter(word => word.contains("amacontext")).mkString("")
+        val locationPath: String = parser.filter(word => StringUtils.containsIgnoreCase(word,"amacontext")).mkString("")
         val directories = locationPath.split("_")
         val actionName = directories(1)
         val dfName = directories(2)
